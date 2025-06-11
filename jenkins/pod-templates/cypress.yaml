@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: jnlp
+      image: jenkins/inbound-agent:latest
+      workingDir: /home/jenkins/agent
+      resources:
+        requests:
+          cpu: 200m
+          memory: 350Mi
+          ephemeral-storage: 150Mi
+        limits:
+          cpu: 512m
+          memory: 512Mi
+          ephemeral-storage: 200Mi
+      securityContext:
+        privileged: true
+    - name: shell
+      image: public.ecr.aws/a2q7i5i2/cypress:latest
+      command:
+        - sleep
+      args:
+        - infinity
+      resources:
+        requests:
+          memory: 600Mi
+          cpu: "1"
+          ephemeral-storage: 500Mi
+        limits:
+          memory: 1000Mi
+          cpu: "1.5"
+          ephemeral-storage: 2000Mi
+

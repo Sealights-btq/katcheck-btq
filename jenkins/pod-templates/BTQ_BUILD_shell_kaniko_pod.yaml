@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: jnlp
+      image: jenkins/inbound-agent:latest
+      workingDir: /home/jenkins/agent
+      resources:
+        requests:
+          cpu: 200m
+          memory: 350Mi
+          ephemeral-storage: 150Mi
+        limits:
+          cpu: 512m
+          memory: 512Mi
+          ephemeral-storage: 200Mi
+      securityContext:
+        privileged: true
+    - name: shell
+      image: public.ecr.aws/a2q7i5i2/sl-jenkins-base-ci:latest
+      command:
+        - sleep
+      args:
+        - infinity
+      resources:
+        requests:
+          memory: 300Mi
+          cpu: "0.5"
+          ephemeral-storage: 500Mi
+        limits:
+          memory: 500Mi
+          cpu: "1.0"
+          ephemeral-storage: 1000Mi
+      securityContext:
+        privileged: true
+        allowPrivilegeEscalation: true
+        runAsUser: 1000
+
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:debug
+      command:
+        - sleep
+      args:
+        - infinity
+      resources:
+        requests:
+          memory: 1000Mi
+          cpu: "0.5"
+          ephemeral-storage: 1000Mi
+        limits:
+          memory: 2000Mi
+          cpu: "1.5"
+          ephemeral-storage: 3000Mi
+
+      tty: true

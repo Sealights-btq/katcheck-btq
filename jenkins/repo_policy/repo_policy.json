@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Push from different accounts",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::534369319675:root"
+      },
+      "Action": [
+        "ecr-public:BatchCheckLayerAvailability",
+        "ecr-public:CompleteLayerUpload",
+        "ecr-public:DescribeImageTags",
+        "ecr-public:DescribeImages",
+        "ecr-public:DescribeRepositories",
+        "ecr-public:GetRepositoryCatalogData",
+        "ecr-public:GetRepositoryPolicy",
+        "ecr-public:InitiateLayerUpload",
+        "ecr-public:ListImages",
+        "ecr-public:PutImage",
+        "ecr-public:PutRepositoryCatalogData",
+        "ecr-public:UploadLayerPart"
+      ]
+    }
+  ]
+}

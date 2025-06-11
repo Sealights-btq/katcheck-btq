@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    "cluster-autoscaler.kubernetes.io/safe-to-evict": "false"
+spec:
+  containers:
+    - name: jnlp
+      image: jenkins/inbound-agent:latest
+      workingDir: /home/jenkins/agent
+      resources:
+        requests:
+          cpu: 200m
+          memory: 350Mi
+          ephemeral-storage: 150Mi
+        limits:
+          cpu: 512m
+          memory: 512Mi
+          ephemeral-storage: 200Mi
+      securityContext:
+        privileged: true
+    - name: shell
+      image: public.ecr.aws/a2q7i5i2/sl-jenkins-all-in:latest
+      command:
+        - sleep
+      args:
+        - infinity
+      resources:
+        requests:
+          memory: 2000Mi
+          cpu: "1"
+          ephemeral-storage: 2000Mi
+        limits:
+          memory: 3000Mi
+          cpu: "2"
+          ephemeral-storage: 5000Mi
