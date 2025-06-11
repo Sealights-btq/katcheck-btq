@@ -28,8 +28,8 @@ pipeline {
         }
     }
     environment {
-        IDENTIFIER = 'btq-template.btq.sealights.co'
-        tag = "template_${params.tag}"
+        IDENTIFIER = 'btq-katcheck.btq.sealights.co'
+        tag = "katcheck_${params.tag}"
     }
      stages {
         stage("Preparing Spin up") {
@@ -47,7 +47,7 @@ pipeline {
                                 stage("Updating Helm") {
                                     sh script: """
                                         chmod 0400 ${SSH_KEY_FILE}
-                                        ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ${SSH_USER}@internal-template.btq.sealights.co 'bash /opt/sealights/install-btq.sh --tag=${env.tag} --buildname=${params.buildname} --labid=${params.labid} --branch=${params.branch} --token=${env.SL_TOKEN} --sl_branch=${params.branch}'
+                                        ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ${SSH_USER}@internal-katcheck.btq.sealights.co 'bash /opt/sealights/install-btq.sh --tag=${env.tag} --buildname=${params.buildname} --labid=${params.labid} --branch=${params.branch} --token=${env.SL_TOKEN} --sl_branch=${params.branch}'
                                     """
                                 }
                     }

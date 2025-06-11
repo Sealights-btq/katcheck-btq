@@ -32,15 +32,15 @@ pipeline {
     booleanParam(name: 'long_test', defaultValue: false, description: 'Runs a long test for showing tia (not effected by run_all_tests flag)')
   }
   environment {
-    MACHINE_DNS = 'http://internal-template.btq.sealights.co:8081'
-    machine_dns = 'http://internal-template.btq.sealights.co:8081'
+    MACHINE_DNS = 'http://internal-katcheck.btq.sealights.co:8081'
+    machine_dns = 'http://internal-katcheck.btq.sealights.co:8081'
     wait_time = "30"
   }
   stages{
     stage("Init test"){
       steps{
         script{
-          git branch: params.BRANCH, url: 'https://github.com/Sealights-btq/template-btq.git'
+          git branch: params.BRANCH, url: 'https://github.com/Sealights-btq/katcheck-btq.git'
         }
       }
     }

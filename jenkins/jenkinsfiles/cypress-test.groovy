@@ -12,7 +12,7 @@ pipeline {
     }
     environment {
       NO_COLOR = "true"
-      MACHINE_DNS = 'http://internal-template.btq.sealights.co:8081'
+      MACHINE_DNS = 'http://internal-katcheck.btq.sealights.co:8081'
     }
     options{
         buildDiscarder logRotator(numToKeepStr: '10')
@@ -23,7 +23,7 @@ pipeline {
         stage("Init test"){
             steps{
                 script{
-                git branch: params.BRANCH, url: 'https://github.com/Sealights-btq/template-btq.git'
+                git branch: params.BRANCH, url: 'https://github.com/Sealights-btq/katcheck-btq.git'
                 }
             }
         }

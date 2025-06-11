@@ -18,7 +18,7 @@ pipeline{
   environment{
     ECR_FULL_NAME = "btq-${params.SERVICE}"
     ECR_URI = "474620256508.dkr.ecr.eu-west-1.amazonaws.com/${env.ECR_FULL_NAME}"
-    TAG = "template_${params.TAG}"
+    TAG = "katcheck_${params.TAG}"
   }
 
   stages{
@@ -30,7 +30,7 @@ pipeline{
             string(credentialsId: 'sealights-token', variable: 'SL_TOKEN')
           ]) {
             // Clone the repository with the specified branch.
-            git branch: params.BRANCH, url: 'https://github.com/Sealights-btq/template-btq.git'
+            git branch: params.BRANCH, url: 'https://github.com/Sealights-btq/katcheck-btq.git'
             currentBuild.displayName = "${SERVICE}-${BUILD_NAME}"
             stage("Build Docker ${params.SERVICE} Image") {
               container(name: 'kaniko'){
