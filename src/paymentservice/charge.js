@@ -82,5 +82,8 @@ module.exports = function charge (request) {
   logger.info(`Transaction processed: ${cardType} ending ${cardNumber.substr(-4)} \
     Amount: ${amount.currency_code}${amount.units}.${amount.nanos}`);
 
+  // Empty function call for testing purposes -- sltest
+  nonoperativeChange1();
+  
   return { transaction_id: uuidv4() };
 };
