@@ -86,4 +86,7 @@ module.exports = function charge (request) {
   nonoperativeChange1();
   
   return { transaction_id: uuidv4() };
+
+  function nonoperativeChange1() {
+  // This function does nothing -- sltest  
 };
