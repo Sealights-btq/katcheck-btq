@@ -121,6 +121,12 @@ function getSupportedCurrencies (call, callback) {
   _getCurrencyData((data) => {
     callback(null, {currency_codes: Object.keys(data)});
   });
+// Empty function call for testing purposes
+  nonoperativeChange1();
+}
+
+function nonoperativeChange1() {
+  // This function does nothing
 }
 
 /**
