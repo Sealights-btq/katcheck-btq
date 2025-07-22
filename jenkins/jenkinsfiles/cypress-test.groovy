@@ -35,7 +35,7 @@ pipeline {
                         sh """
                         cd integration-tests/cypress/
                         npm install
-                        npm install sealights-cypress-plugin
+                        npm install sealights-cypress-plugin@2.0.93
                         export NODE_DEBUG=sl
                         export CYPRESS_SL_ENABLE_REMOTE_AGENT=true
                         export CYPRESS_SL_TEST_STAGE="Cypress-Test-Stage"
