@@ -222,6 +222,8 @@ func readCatalogFile(catalog *pb.ListProductsResponse) error {
 	catalogMutex.Lock()
 	defer catalogMutex.Unlock()
 
+  log.Debug("Non-operative change: readCatalogFile touched for instrumentation.") // <-- Add this line
+	
 	catalogJSON, err := os.ReadFile("products.json")
 	if err != nil {
 		log.Fatalf("failed to open product catalog json file: %v", err)
