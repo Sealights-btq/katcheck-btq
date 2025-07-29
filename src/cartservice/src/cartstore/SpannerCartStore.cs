@@ -50,9 +50,18 @@ namespace cartservice.cartstore
             Console.WriteLine($"Built Spanner connection string: '{databaseString}'");
         }
 
+        /// <summary>
+        /// Logs method entry with user context (nonoperational helper).
+        /// </summary>
+        private void _LogMethodCall(string methodName, string userId)
+        {
+            Console.WriteLine($"[DEBUG] Entering {methodName} for userId={userId} at {DateTime.UtcNow:O}");
+        }
 
         public async Task AddItemAsync(string userId, string productId, int quantity)
         {
+            _LogMethodCall(nameof(AddItemAsync), userId);
+
             Console.WriteLine($"AddItemAsync for {userId} called");
             try
             {
@@ -101,9 +110,10 @@ namespace cartservice.cartstore
             }
         }
 
-
         public async Task<Hipstershop.Cart> GetCartAsync(string userId)
         {
+            _LogMethodCall(nameof(GetCartAsync), userId);
+
             Console.WriteLine($"GetCartAsync called for userId={userId}");
             Hipstershop.Cart cart = new();
             try
@@ -141,9 +151,10 @@ namespace cartservice.cartstore
             }
         }
 
-
         public async Task EmptyCartAsync(string userId)
         {
+            _LogMethodCall(nameof(EmptyCartAsync), userId);
+
             Console.WriteLine($"EmptyCartAsync called for userId={userId}");
 
             try
@@ -182,4 +193,3 @@ namespace cartservice.cartstore
         }
     }
 }
-
