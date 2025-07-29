@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,158 +13,55 @@
 // limitations under the License.
 
 using System;
-using Grpc.Core;
-using Npgsql;
-using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
-using Google.Api.Gax.ResourceNames;
-using Google.Cloud.SecretManager.V1;
- 
-namespace cartservice.cartstore
+using Grpc.Core;
+using Microsoft.Extensions.Logging;
+using cartservice.cartstore;
+using Hipstershop;
+
+namespace cartservice.services
 {
-    public class AlloyDBCartStore : ICartStore
+    public class CartService : Hipstershop.CartService.CartServiceBase
     {
-        private readonly string tableName;
-        private readonly string connectionString;
+        private readonly static Empty _emptyResponse = new Empty();
+        private readonly ICartStore _cartStore;
+        private readonly ILogger<CartService> _logger;
 
-        public AlloyDBCartStore(IConfiguration configuration)
+        public CartService(ICartStore cartStore, ILogger<CartService> logger)
         {
-            // Create a Cloud Secrets client.
-            SecretManagerServiceClient client = SecretManagerServiceClient.Create();
-            var projectId = configuration["PROJECT_ID"];
-            var secretId = configuration["ALLOYDB_SECRET_NAME"];
-            SecretVersionName secretVersionName = new SecretVersionName(projectId, secretId, "latest");
-
-            AccessSecretVersionResponse result = client.AccessSecretVersion(secretVersionName);
-            // Convert the payload to a string. Payloads are bytes by default.
-            string alloyDBPassword = result.Payload.Data.ToStringUtf8().TrimEnd('\r', '\n');
-        
-            // TODO: Create a separate user for connecting within the application
-            // rather than using our superuser
-            string alloyDBUser = "postgres";
-            string databaseName = configuration["ALLOYDB_DATABASE_NAME"];
-            // TODO: Consider splitting workloads into read vs. write and take
-            // advantage of the AlloyDB read pools
-            string primaryIPAddress = configuration["ALLOYDB_PRIMARY_IP"];
-            connectionString = "Host="          +
-                               primaryIPAddress +
-                               ";Username="     +
-                               alloyDBUser      +
-                               ";Password="     +
-                               alloyDBPassword  +
-                               ";Database="     +
-                               databaseName;
-
-            tableName = configuration["ALLOYDB_TABLE_NAME"];
+            _cartStore = cartStore;
+            _logger = logger;
         }
 
-
-        public async Task AddItemAsync(string userId, string productId, int quantity)
+        /// <summary>
+        /// Adds an item to the user's cart.
+        /// </summary>
+        public async override Task<Empty> AddItem(AddItemRequest request, ServerCallContext context)
         {
-            Console.WriteLine($"AddItemAsync for {userId} called");
-            try
-            {
-                await using var dataSource = NpgsqlDataSource.Create(connectionString);
+            _logger.LogInformation("AddItem called for user {UserId} with product {ProductId}, quantity {Quantity}",
+                request.UserId, request.Item?.ProductId, request.Item?.Quantity);
 
-                // Fetch the current quantity for our userId/productId tuple
-                var fetchCmd = $"SELECT quantity FROM {tableName} WHERE userID='{userId}' AND productID='{productId}'";
-                var currentQuantity = 0;
-                var cmdRead = dataSource.CreateCommand(fetchCmd);
-                await using (var reader = await cmdRead.ExecuteReaderAsync())
-                {
-                    while (await reader.ReadAsync())
-                        currentQuantity += reader.GetInt32(0);
-                }
-                var totalQuantity = quantity + currentQuantity;
-
-                var insertCmd = $"INSERT INTO {tableName} (userId, productId, quantity) VALUES ('{userId}', '{productId}', {totalQuantity})";
-                await using (var cmdInsert = dataSource.CreateCommand(insertCmd))
-                {
-                    await Task.Run(() =>
-                    {
-                        return cmdInsert.ExecuteNonQueryAsync();
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new RpcException(
-                    new Status(StatusCode.FailedPrecondition, $"Can't access cart storage at {connectionString}. {ex}"));
-            }
+            await _cartStore.AddItemAsync(request.UserId, request.Item.ProductId, request.Item.Quantity);
+            return _emptyResponse;
         }
 
-
-        public async Task<Hipstershop.Cart> GetCartAsync(string userId)
+        /// <summary>
+        /// Retrieves the current cart for a user.
+        /// </summary>
+        public override Task<Cart> GetCart(GetCartRequest request, ServerCallContext context)
         {
-            Console.WriteLine($"GetCartAsync called for userId={userId}");
-            Hipstershop.Cart cart = new();
-            cart.UserId = userId;
-            try
-            {
-                await using var dataSource = NpgsqlDataSource.Create(connectionString);
-
-                var cartFetchCmd = $"SELECT productId, quantity FROM {tableName} WHERE userId = '{userId}'";
-                var cmd = dataSource.CreateCommand(cartFetchCmd);
-                await using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        Hipstershop.CartItem item = new()
-                        {
-                            ProductId = reader.GetString(0),
-                            Quantity = reader.GetInt32(1)
-                        };
-                        cart.Items.Add(item);
-                    }
-                }
-                await Task.Run(() =>
-                {
-                    return cart;
-                });
-            }
-            catch (Exception ex)
-            {
-                throw new RpcException(
-                    new Status(StatusCode.FailedPrecondition, $"Can't access cart storage at {connectionString}. {ex}"));
-            }
-            return cart;
+            _logger.LogInformation("GetCart called for user {UserId}", request.UserId);
+            return _cartStore.GetCartAsync(request.UserId);
         }
 
-
-        public async Task EmptyCartAsync(string userId)
+        /// <summary>
+        /// Empties the user's cart.
+        /// </summary>
+        public async override Task<Empty> EmptyCart(EmptyCartRequest request, ServerCallContext context)
         {
-            Console.WriteLine($"EmptyCartAsync called for userId={userId}");
-
-            try
-            {
-                await using var dataSource = NpgsqlDataSource.Create(connectionString);
-                var deleteCmd = $"DELETE FROM {tableName} WHERE userID = '{userId}'";
-                await using (var cmd = dataSource.CreateCommand(deleteCmd))
-                {
-                    await Task.Run(() =>
-                    {
-                        return cmd.ExecuteNonQueryAsync();
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new RpcException(
-                    new Status(StatusCode.FailedPrecondition, $"Can't access cart storage at {connectionString}. {ex}"));
-            }
-        }
-
-        public bool Ping()
-        {
-            try
-            {
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            _logger.LogInformation("EmptyCart called for user {UserId}", request.UserId);
+            await _cartStore.EmptyCartAsync(request.UserId);
+            return _emptyResponse;
         }
     }
 }
-
