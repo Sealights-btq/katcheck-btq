@@ -19,7 +19,7 @@ using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
 using Google.Api.Gax.ResourceNames;
 using Google.Cloud.SecretManager.V1;
- 
+
 namespace cartservice.cartstore
 {
     public class AlloyDBCartStore : ICartStore
@@ -38,7 +38,7 @@ namespace cartservice.cartstore
             AccessSecretVersionResponse result = client.AccessSecretVersion(secretVersionName);
             // Convert the payload to a string. Payloads are bytes by default.
             string alloyDBPassword = result.Payload.Data.ToStringUtf8().TrimEnd('\r', '\n');
-        
+
             // TODO: Create a separate user for connecting within the application
             // rather than using our superuser
             string alloyDBUser = "postgres";
@@ -46,21 +46,30 @@ namespace cartservice.cartstore
             // TODO: Consider splitting workloads into read vs. write and take
             // advantage of the AlloyDB read pools
             string primaryIPAddress = configuration["ALLOYDB_PRIMARY_IP"];
-            connectionString = "Host="          +
+            connectionString = "Host=" +
                                primaryIPAddress +
-                               ";Username="     +
-                               alloyDBUser      +
-                               ";Password="     +
-                               alloyDBPassword  +
-                               ";Database="     +
+                               ";Username=" +
+                               alloyDBUser +
+                               ";Password=" +
+                               alloyDBPassword +
+                               ";Database=" +
                                databaseName;
 
             tableName = configuration["ALLOYDB_TABLE_NAME"];
         }
 
+        /// <summary>
+        /// Logs method entry with user context (nonoperational helper).
+        /// </summary>
+        private void _LogMethodCall(string methodName, string userId)
+        {
+            Console.WriteLine($"[DEBUG] Entering {methodName} for userId={userId} at {DateTime.UtcNow:O}");
+        }
 
         public async Task AddItemAsync(string userId, string productId, int quantity)
         {
+            _LogMethodCall(nameof(AddItemAsync), userId);
+
             Console.WriteLine($"AddItemAsync for {userId} called");
             try
             {
@@ -93,9 +102,10 @@ namespace cartservice.cartstore
             }
         }
 
-
         public async Task<Hipstershop.Cart> GetCartAsync(string userId)
         {
+            _LogMethodCall(nameof(GetCartAsync), userId);
+
             Console.WriteLine($"GetCartAsync called for userId={userId}");
             Hipstershop.Cart cart = new();
             cart.UserId = userId;
@@ -130,9 +140,10 @@ namespace cartservice.cartstore
             return cart;
         }
 
-
         public async Task EmptyCartAsync(string userId)
         {
+            _LogMethodCall(nameof(EmptyCartAsync), userId);
+
             Console.WriteLine($"EmptyCartAsync called for userId={userId}");
 
             try
