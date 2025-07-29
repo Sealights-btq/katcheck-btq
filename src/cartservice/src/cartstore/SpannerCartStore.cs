@@ -16,58 +16,53 @@ using System;
 using Google.Cloud.Spanner.Data;
 using Grpc.Core;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
 namespace cartservice.cartstore
 {
-    /// <summary>
-    /// Provides cart storage operations using Google Cloud Spanner.
-    /// </summary>
     public class SpannerCartStore : ICartStore
     {
         private static readonly string TableName = "CartItems";
         private static readonly string DefaultInstanceName = "onlineboutique";
         private static readonly string DefaultDatabaseName = "carts";
         private readonly string databaseString;
-        private readonly ILogger<SpannerCartStore> _logger;
 
-        public SpannerCartStore(IConfiguration configuration, ILogger<SpannerCartStore> logger)
+        public SpannerCartStore(IConfiguration configuration)
         {
-            _logger = logger;
-
             string spannerProjectId = configuration["SPANNER_PROJECT"];
             string spannerInstanceId = configuration["SPANNER_INSTANCE"];
             string spannerDatabaseId = configuration["SPANNER_DATABASE"];
             string spannerConnectionString = configuration["SPANNER_CONNECTION_STRING"];
             SpannerConnectionStringBuilder builder = new();
-
-            if (!string.IsNullOrEmpty(spannerConnectionString))
-            {
+            if (!string.IsNullOrEmpty(spannerConnectionString)) {
                 builder.DataSource = spannerConnectionString;
                 databaseString = builder.ToString();
-                _logger.LogInformation("Using provided Spanner connection string: {ConnectionString}", databaseString);
+                Console.WriteLine($"Spanner connection string: ${databaseString}");
                 return;
             }
-
             if (string.IsNullOrEmpty(spannerInstanceId))
                 spannerInstanceId = DefaultInstanceName;
             if (string.IsNullOrEmpty(spannerDatabaseId))
                 spannerDatabaseId = DefaultDatabaseName;
-
             builder.DataSource =
                 $"projects/{spannerProjectId}/instances/{spannerInstanceId}/databases/{spannerDatabaseId}";
             databaseString = builder.ToString();
-
-            _logger.LogInformation("Built Spanner connection string: {ConnectionString}", databaseString);
+            Console.WriteLine($"Built Spanner connection string: '{databaseString}'");
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Logs method entry with user context (nonoperational helper).
+        /// </summary>
+        private void _LogMethodCall(string methodName, string userId)
+        {
+            Console.WriteLine($"[DEBUG] Entering {methodName} for userId={userId} at {DateTime.UtcNow:O}");
+        }
+
         public async Task AddItemAsync(string userId, string productId, int quantity)
         {
-            _logger.LogInformation("AddItemAsync called for userId={UserId}, productId={ProductId}, quantity={Quantity}",
-                userId, productId, quantity);
+            _LogMethodCall(nameof(AddItemAsync), userId);
 
+            Console.WriteLine($"AddItemAsync for {userId} called");
             try
             {
                 using SpannerConnection spannerConnection = new(databaseString);
@@ -84,11 +79,11 @@ namespace cartservice.cartstore
                     quantityLookup.Parameters["userId"].Value = userId;
                     quantityLookup.Parameters["productId"].Value = productId;
                     quantityLookup.Transaction = transaction;
-
-                    using var reader = await quantityLookup.ExecuteReaderAsync();
-                    while (await reader.ReadAsync())
+                    using (var reader = await quantityLookup.ExecuteReaderAsync())
                     {
-                        currentQuantity += reader.GetFieldValue<int>("quantity");
+                        while (await reader.ReadAsync()) {
+                            currentQuantity += reader.GetFieldValue<int>("quantity");
+                        }
                     }
 
                     var cmd = spannerConnection.CreateInsertOrUpdateCommand(TableName,
@@ -102,24 +97,25 @@ namespace cartservice.cartstore
                     cmd.Parameters["productId"].Value = productId;
                     cmd.Parameters["quantity"].Value = currentQuantity + quantity;
                     cmd.Transaction = transaction;
-
-                    await cmd.ExecuteNonQueryAsync();
+                    await Task.Run(() =>
+                    {
+                        return cmd.ExecuteNonQueryAsync();
+                    });
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to add item to cart for userId={UserId}", userId);
                 throw new RpcException(
                     new Status(StatusCode.FailedPrecondition, $"Can't access cart storage at {databaseString}. {ex}"));
             }
         }
 
-        /// <inheritdoc />
         public async Task<Hipstershop.Cart> GetCartAsync(string userId)
         {
-            _logger.LogInformation("GetCartAsync called for userId={UserId}", userId);
-            Hipstershop.Cart cart = new();
+            _LogMethodCall(nameof(GetCartAsync), userId);
 
+            Console.WriteLine($"GetCartAsync called for userId={userId}");
+            Hipstershop.Cart cart = new();
             try
             {
                 using SpannerConnection spannerConnection = new(databaseString);
@@ -127,12 +123,15 @@ namespace cartservice.cartstore
                     $"SELECT * FROM {TableName} WHERE userId = @userId",
                     new SpannerParameterCollection {
                         { "userId", SpannerDbType.String }
-                    });
+                    }
+                );
                 cmd.Parameters["userId"].Value = userId;
-
                 using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
+                    // Only add the userId if something is in the cart.
+                    // This is based on how the cartservice example behaves.
+                    // An empty cart has no userId attached.
                     cart.UserId = userId;
 
                     Hipstershop.CartItem item = new()
@@ -147,45 +146,50 @@ namespace cartservice.cartstore
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to retrieve cart for userId={UserId}", userId);
                 throw new RpcException(
                     new Status(StatusCode.FailedPrecondition, $"Can't access cart storage at {databaseString}. {ex}"));
             }
         }
 
-        /// <inheritdoc />
         public async Task EmptyCartAsync(string userId)
         {
-            _logger.LogInformation("EmptyCartAsync called for userId={UserId}", userId);
+            _LogMethodCall(nameof(EmptyCartAsync), userId);
+
+            Console.WriteLine($"EmptyCartAsync called for userId={userId}");
 
             try
             {
                 using SpannerConnection spannerConnection = new(databaseString);
-                var cmd = spannerConnection.CreateDmlCommand(
-                    $"DELETE FROM {TableName} WHERE userId = @userId",
+                await Task.Run(() =>
+                {
+                    var cmd = spannerConnection.CreateDmlCommand(
+                        $"DELETE FROM {TableName} WHERE userId = @userId",
                     new SpannerParameterCollection
                     {
                         { "userId", SpannerDbType.String }
                     });
-                cmd.Parameters["userId"].Value = userId;
-
-                await cmd.ExecuteNonQueryAsync();
+                    cmd.Parameters["userId"].Value = userId;
+                    return cmd.ExecuteNonQueryAsync();
+                });
             }
+
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to empty cart for userId={UserId}", userId);
                 throw new RpcException(
                     new Status(StatusCode.FailedPrecondition, $"Can't access cart storage at {databaseString}. {ex}"));
             }
         }
 
-        /// <summary>
-        /// Basic liveness check.
-        /// </summary>
         public bool Ping()
         {
-            _logger.LogDebug("Ping called");
-            return true;
+            try
+            {
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
     }
 }
